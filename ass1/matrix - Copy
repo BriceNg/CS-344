@@ -1,0 +1,399 @@
+#!/bin/bash
+
+#Temp Files
+inputFile1="temp1"
+inputFile2="temp2"
+tempMean="tempM"
+tempOut="tempO"
+tempCol="tempC"
+tempRow="tempR"
+tempTrans="tempT"
+	
+
+
+#Variables
+col_num=0
+row_num=0
+
+#Argument Checking
+if [ $# -eq 0 ]; then
+	echo "No arguments.  Exiting..." >&2
+	exit 1
+elif [ $# -eq 20 ]; then
+	file1=$2
+	function_oper $1
+elif [ $# -eq 30 ]; then
+	file1=$2
+	file2=$3
+	function_oper $1
+elif [ $# -eq 30 ]; then
+	echo "Too many arguments.  Exiting..." >&2
+	exit 1
+else
+	echo "stdin not implemented. Exiting..." >&2
+	exit 1
+fi
+
+clear
+
+#Get the Dimensions of the Matrix
+function_dims ()
+{
+	if [[ -s inputFile1 ]]; then
+		echo "First matrix is empty." >&2
+	exit 1
+	elif [[ -s inputFile2 ]]; then
+		echo "Second matrix is empty." >&2
+	exit 1
+	fi
+	#Initialize Temp Files
+	tempRow="tempR"
+	tempCol="tempC"
+	
+	#Get Row Number
+	cut -c 1 $inputFile1 > $tempRow
+	while read tempR
+	do
+		row_num=`expr $row_num + 1`
+	done < $tempRow
+	
+	#Get Column Number
+	head -1 $inputFile1 > $tempCol
+	while read tempC
+	do
+		for i in $tempC
+		do
+			col_num=`expr $col_num + 1`
+		done
+	done < $tempCol
+	
+	#Print "Row Column" Number
+	echo "$row_num $col_num"
+	
+	#Remove Temp Files
+	rm -rf tempRow
+	rm -rf tempCol
+	rm -rf tempR
+	rm -rf tempC
+	rm -rf temp1
+	
+	return
+}
+
+#Transpose a Matrix
+#######################################
+#Has Trailing Tabs At End Of Each Line#
+#######################################
+function_trans ()
+{
+	#Check If File Is Empty
+	if [[ -s inputFile1 ]]; then
+		echo "First matrix is empty." >&2
+	exit 1
+	fi
+	
+	#Initialize Temp Files
+	tempCol="tempC"
+	tempTrans="tempT"
+	
+	#Get Number of Columns
+	head -1 $file1 > $tempCol
+	while read tempC
+	do
+		for i in $tempC
+		do
+			col_num=`expr $col_num + 1`
+		done
+	done < $tempCol
+	
+	#For Every Column, Translate it
+	for (( i=1; i <= $col_num; i++))
+	do
+		cut -f $i $file1 | tr -s '\n' '\t' >> tempTrans
+		#Take Off Trailing Tabs
+		#head --byte -1 < $tempTrans
+		echo "" >> tempTrans
+	done
+	#Print
+	head --byte -2 < tempTrans
+	echo  $tempT
+	
+	#Remove Temp Files
+	rm -rf tempTrans
+	rm -rf tempCol
+	rm -rf tempT
+	rm -rf tempC
+	rm -rf temp1
+	
+	return
+}
+
+#Calculate Mean of Columns in a Matrix
+##################################
+#Has Trailing Tabs At End Of Line#
+##################################
+function_mean ()
+{
+	#Initialize Temp Files
+	tempOut="tempO"
+	tempMean="tempM"
+	tempCol="tempC"
+	tempRow="tempR"
+	
+	#Make Columns Rows Via Transpose Function
+	function_trans inputFile1 > tempMean
+	
+	#### Testing, Ignore Me ####
+	#cat tempMean	#Checks to see if tempMean got filled correctly
+	#### Testing, Ignore Me ####
+	
+	#IFS=$'\t'
+	
+	#For Each Row, Sum Row
+	while read tempM
+	do
+		sum=0
+		count=0
+		mean=0
+		for i in $tempM
+		do
+			num=$i
+			count=`expr $count + 1`
+			sum=`expr $sum + $num`
+		done
+		mean=$(( ($sum + ($count/2)*($sum>0)*2-1 ) / $count ))
+		echo "$mean " > tempRow
+		#Outputs A Column, So Use Translate To Make It A Row
+		cat tempRow | tr '\n' '\t' >> "$tempOut"
+	done < tempMean
+	
+	#Remove Tab At End
+	head --byte -1 < "$tempOut"
+	echo
+	
+	#Remove Temp Files
+	rm -rf tempMean
+	rm -rf tempCol
+	rm -rf tempOut
+	rm -rf tempC
+	rm -rf temp1
+	rm -rf tempO
+	rm -rf temp2
+	rm -rf tempR
+	rm -rf tempRow
+	
+	return
+}
+
+#Adds 2 Arrays Together
+function_add ()
+{
+	#Initialize Temp Files
+	tempRow="tempR"
+	tempCol="tempC"
+	tempOut="tempO"
+	
+	#Check Arrays
+	if [[ -s inputFile1 ]]; then
+		echo "First matrix is empty." >&2
+	exit 1
+	fi
+	if [[ -s inputFile2 ]]; then
+		echo "Second matrix is empty." >&2
+	exit 1
+	fi
+	
+	#Get M1 Rows and Cols
+	cut -c 1 $inputFile1 > $tempRow
+	while read tempR
+	do
+		m1_rows=`expr $m1_rows + 1`
+	done < $tempRow
+	head -1 $inputFile1 > $tempCol
+	while read tempC
+	do
+		for i in $tempC
+		do
+			m1_cols=`expr $m1_cols + 1`
+		done
+	done < $tempCol
+	
+	#Get M2 Rows and Cols
+	cut -c 1 $inputFile2 > $tempRow
+	while read tempR
+	do
+		m2_rows=`expr $m2_rows + 1`
+	done < $tempRow
+	head -1 $inputFile2 > $tempCol
+	while read tempC
+	do
+		for i in $tempC
+		do
+			m2_cols=`expr $m2_cols + 1`
+		done
+	done < $tempCol
+	
+	#### Testing, Ignore Me ####
+#	echo "M1 Rows #: $m1_rows"
+#	echo "M1 Cols #: $m1_cols"
+#	echo "M2 Rows #: $m2_rows"
+#	echo "M2 Cols #: $m2_cols"
+	#### Testing, Ignore Me ####
+	
+	#Check If First & Second Matrices Are Compatible
+	if [ "$m1_cols" == "$m2_cols" ] && [ "$m1_rows" == "$m2_rows" ]; then
+		#echo "Matrices have same Dimensions.  Adding..."
+		row1="row1$$"
+		row2="row2$$"
+		out="out$$"
+		for (( i=1; i < `expr $m1_rows + 1`; ++i ))
+		do
+			head -$i $inputFile1 | tail -1 > $row1
+			#cat $row1
+			#echo
+			head -$i $inputFile2 | tail -1 > $row2
+			#cat $row2
+			#echo
+			for i in $row1
+			do
+				num1=$i
+				sum=0
+				for x in $row2
+				do
+					num2=$x
+					sum=`expr $num1 + $num2` >> "$tempOut"
+				done
+			done < $row2
+			echo "" >> tempOut
+		done < $row1
+	else
+		echo "Matrices have incompatible Dimensions" >&2
+		exit 1
+	fi
+	
+	#Remove Temp Files
+	rm -rf tempCol
+	rm -rf tempC
+	rm -rf temp1
+	rm -rf temp2
+	rm -rf tempR
+	rm -rf tempRow
+	rm -rf tempOut
+	rm -rf tempO
+	rm -rf $row1
+	rm -rf $row2
+	rm -rf #$out
+}
+
+#Multiply 2 Matrices Together
+function_mult ()
+{
+	#Check Arrays
+	if [[ -s inputFile1 ]]; then
+		echo "First matrix is empty." >&2
+	exit 1
+	fi
+	if [[ -s inputFile2 ]]; then
+		echo "Second matrix is empty." >&2
+	exit 1
+	fi
+	
+	#Temp Files
+	tempRow="tempR"
+	tempCol="tempC"
+	
+	#Get M1 Rows And Cols
+	cut -c 1 $inputFile1 > $tempRow
+	while read tempR
+	do
+		m1_rows=`expr $m1_rows + 1`
+	done < $tempRow
+	head -1 $inputFile1 > $tempCol
+	while read tempC
+	do
+		for i in $tempC
+		do
+			m1_cols=`expr $m1_cols + 1`
+		done
+	done < $tempCol
+	
+	#Get M2 Rows And Cols
+	cut -c 1 $inputFile2 > $tempRow
+	while read tempR
+	do
+		m2_rows=`expr $m2_rows + 1`
+	done < $tempRow
+	head -1 $inputFile2 > $tempCol
+	while read tempC
+	do
+		for i in $tempC
+		do
+			m2_cols=`expr $m2_cols + 1`
+		done
+	done < $tempCol
+	
+	#### Testing, Ignore Me ####
+#	echo "M1 Rows #: $m1_rows"
+#	echo "M1 Cols #: $m1_cols"
+#	echo "M2 Rows #: $m2_rows"
+#	echo "M2 Cols #: $m2_cols"
+	#### Testing, Ignore Me ####
+	
+	#Check If First & Second Matrices Are Compatible
+	if [ "$m1_rows" == "$m2_cols" ]; then
+		echo "Matrices Compatible.  Multiplying..."
+	else
+		echo "Matrices have incompatible Dimensions." >&2
+		exit 1
+	fi
+	
+	#Remove Temp Files
+	rm -rf tempCol
+	rm -rf tempC
+	rm -rf temp1
+	rm -rf temp2
+	rm -rf tempR
+	rm -rf tempRow
+}
+
+# Do Operation Based on First Argument
+function_oper ()
+{
+	if [ "$1" == dims ]; then
+		#echo "You have chosen Dimensions"
+		cat $file1 > $inputFile1
+		function_dims inputFile1
+	elif [ "$1" == transpose ]; then
+		#echo "You have chosen Transpose"
+		cat $file1 > $inputFile1
+		function_trans inputFile1
+	elif [ "$1" == mean ]; then
+		#echo "You have chosen Mean"
+		cat $file1 > $inputFile1
+		function_mean inputFile1
+	elif [ "$1" == add ]; then
+		#echo "You have chosen Add"
+		if [ $file1 ] && [ $file2 ]; then
+			cat $file1 > $inputFile1
+			cat $file2 > $inputFile2
+			function_add inputFile1 inputFile2
+		else
+			echo "Invalid number of arguments" >&2
+			exit 1
+		fi
+	elif [ "$1" == multiply ]; then
+		#echo "You have chosen Multiply"
+		if [ $file1 ] && [ $file2 ]; then
+			cat $file1 > $inputFile1
+			cat $file2 > $inputFile2
+			function_mult inputFile1 inputFile2
+		else
+			echo "Invalid number of arguments" >&2
+			exit 1
+		fi
+	else
+		echo "wut"
+		exit 1
+	fi
+}
+
